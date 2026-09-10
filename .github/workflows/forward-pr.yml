@@ -1,0 +1,44 @@
+# Flow-through: every GitHub PR becomes a gh-pr/N branch + PR on Codeberg,
+# where the maintainer reviews and merges.
+name: Forward GitHub PRs to Codeberg
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  forward:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Push PR head branch to Codeberg
+        run: |
+          git init gh-pr && cd gh-pr
+          git fetch "https://github.com/danielcanencia/qemu-boxes.git" \
+            "refs/pull/${PR_NUMBER}/head"
+          git push \
+            "https://danielcanencia:${CODEBERG_TOKEN}@codeberg.org/danielcanencia/qemu-boxes.git" \
+            "FETCH_HEAD:refs/heads/gh-pr/${PR_NUMBER}"
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CODEBERG_TOKEN: ${{ secrets.codeberg_token }}
+
+      - name: Open Codeberg PR (idempotent)
+        run: |
+          API="https://codeberg.org/api/v1/repos/danielcanencia/qemu-boxes/pulls"
+          HEAD="gh-pr/${PR_NUMBER}"
+          EXISTING=$(curl -s -H "Authorization: token ${CODEBERG_TOKEN}" \
+            "${API}?state=open&limit=50" | jq -r \
+            ".[] | select(.head.ref == \"${HEAD}\") | .number")
+          if [ -z "${EXISTING}" ]; then
+            BODY=$(jq -n --arg head "$HEAD" --arg base "main" \
+              --arg title "GitHub PR #${PR_NUMBER}: ${PR_TITLE}" \
+              '{head: $head, base: $base, title: $title}')
+            curl -s -X POST "$API" \
+              -H "Authorization: token ${CODEBERG_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$BODY"
+          fi
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          CODEBERG_TOKEN: ${{ secrets.codeberg_token }}
+

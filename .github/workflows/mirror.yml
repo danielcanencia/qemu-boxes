@@ -1,0 +1,20 @@
+name: Mirror from Codeberg
+on:
+    schedule:
+        - cron: "0 * * * *"
+    workflow_dispatch:
+
+jobs:
+    mirror:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Clone from Codeberg
+              run: git clone --bare https://codeberg.org/danielcanencia/qemu-boxes.git
+            - name: Push mirror to GitHub
+              run: |
+                cd qemu-boxes.git
+                git push --mirror "https://x-access-token:${GITHUB_TOKEN}@github.com/danielcanencia/qemu-boxes.git"
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
