@@ -7,8 +7,8 @@
 
 # qemu-boxes
 
-[![hosted on Codeberg](https://img.shields.io/badge/Hosted_on-Codeberg-blue?logo=codeberg)](https://codeberg.org/YOUR_USERNAME/qemu-boxes)
-[![available on GitHub](https://img.shields.io/badge/Available_on-GitHub-181717?logo=github&logoColor=white)](https://github.com/YOUR_USERNAME/qemu-boxes)
+[![hosted on Codeberg](https://img.shields.io/badge/Hosted_on-Codeberg-blue?logo=codeberg)](https://codeberg.org/danielcanencia/qemu-boxes)
+[![available on GitHub](https://img.shields.io/badge/Available_on-GitHub-181717?logo=github&logoColor=white)](https://github.com/danielcanencia/qemu-boxes)
 
 Automated creation and management of custom QEMU virtual machine boxes.
 
