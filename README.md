@@ -60,7 +60,7 @@ shell or shell-like languages are preferred whenever reasonable.
 ### Conventions
 
 - Use `#!/usr/bin/env sh` as the shebang.
-- Use tabs for indentation (8-column width), in line with OpenBSD style.
+- Use tabs for indentation (4-column width).
 - Use `name ()` function syntax, not `function name ()`.
 - All variables that may vary must be configurable — never hardcode values
   that the user is expected to change.
