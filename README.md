@@ -19,8 +19,8 @@ Automated creation and management of custom QEMU virtual machine boxes.
 
 ## Requirements
 
-- Linux with KVM support
-- [QEMU](https://www.qemu.org/) (`qemu-system-x86_64`, `qemu-img`)
+- Linux with KVM support.
+- [QEMU](https://www.qemu.org/) (`qemu-system-x86_64`, `qemu-img`).
 
 ## Project structure
 
@@ -44,9 +44,6 @@ See [openbsd/README.md](openbsd/README.md) for the OpenBSD box.
 3. Add a `README.md` with system-specific instructions.
 4. Update the supported systems table above.
 
-> **Note**: Scripts can be written in any language, though shell script or \
-> shell-like languages (e.g., Bash, Fish, Zsh) are preferred for portability and simplicity.
-
 ## Coding standards
 
 Scripts must follow the coding standards described below.
@@ -54,17 +51,22 @@ Scripts must follow the coding standards described below.
 ### Language
 
 The preferred language is **POSIX-compliant `sh`** (i.e. `/bin/sh`), for
-portability across systems and ease of use. Other languages are accepted, but
-shell or shell-like languages are preferred whenever reasonable.
+portability across systems and ease of use. However, other languages may 
+be accepted.
+
+> **Note**
+> Scripts can be written in any language, though shell script or shell-like 
+> languages (e.g., sh, bash, zsh) are preferred for portability 
+> and simplicity.
 
 ### Conventions
 
 - Use `#!/usr/bin/env sh` as the shebang.
 - Use tabs for indentation (4-column width).
 - Use `name ()` function syntax, not `function name ()`.
-- All variables that may vary must be configurable — never hardcode values
+- All variables that may vary must be configurable — never hardcode values.
   that the user is expected to change.
-- Check syntax before committing: `sh -n script.sh`
+- Check syntax before committing: `sh -n script.sh`.
 
 ### Recommended tools
 
