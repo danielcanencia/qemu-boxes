@@ -29,7 +29,7 @@ jobs:
             "${API}?state=open&limit=50" | jq -r \
             ".[] | select(.head.ref == \"${HEAD}\") | .number")
           if [ -z "${EXISTING}" ]; then
-            BODY=$(jq -n --arg head "$HEAD" --arg base "main" \
+            BODY=$(jq -n --arg head "$HEAD" --arg base "master" \
               --arg title "GitHub PR #${PR_NUMBER}: ${PR_TITLE}" \
               '{head: $head, base: $base, title: $title}')
             curl -s -X POST "$API" \
