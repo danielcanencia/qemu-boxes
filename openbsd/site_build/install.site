@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+
+# Post-install site configuration for an OpenBSD QEMU box.
+# The username is set during installation via install.conf ("Setup a user").
+# Since install.site runs post-install, it cannot read install.conf directly,
+# so we derive the username from /etc/passwd: the installer creates exactly
+# one non-root user, which gets the first UID >= 1000.
+USERNAME=$(awk -F: '$3 >= 1000 { print $1; exit }' /etc/passwd)
+
+# Create build directories
+mkdir -p /usr/obj/ports /usr/ports/distfiles /usr/ports/packages
+
+# Fix ownership and permissions for non-root building
+chown -R "${USERNAME}:wobj" /usr/ports /usr/obj /usr/src
+chmod -R g+w /usr/ports /usr/obj /usr/src
+
+# Set proper permissions for system config files
+chmod 600 /etc/doas.conf
+chmod 644 /etc/mk.conf

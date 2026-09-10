@@ -1,0 +1,6 @@
+# shellcheck configuration
+#
+# SC2016 (info): "Expressions don't expand in single quotes." This is
+# intentional in usage messages that print variable names literally
+# (e.g. `$QCOW2_DISK_CAPACITY`) for the user to read.
+disable=SC2016

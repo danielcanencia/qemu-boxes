@@ -1,0 +1,9 @@
+# Downloaded installation images
+*.img
+SHA256
+
+# QCOW2 virtual machine disks
+*.qcow2
+
+# Generated site tarballs
+site*.tgz
