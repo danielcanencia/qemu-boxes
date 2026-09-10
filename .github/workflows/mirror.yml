@@ -10,7 +10,7 @@ jobs:
         permissions:
             contents: write
             # Allow Github tokens to update .github/workflows/*
-            workflows: write
+            actions: write
         steps:
             - name: Clone from Codeberg
               run: git clone --bare https://codeberg.org/danielcanencia/qemu-boxes.git
