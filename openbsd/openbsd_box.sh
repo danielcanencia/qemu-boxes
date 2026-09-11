@@ -82,8 +82,7 @@ install () {
 	printf "
 ======== POTENTIAL REMOVAL. IMPORTANT!!!! ========
 The installation is about to begin, and the current image will be overwritten.
-Do you wish to continue? [Y(y)/N(n)]:
-"
+Do you wish to continue? [Y(y)/N(n)]: "
 	read -r reply
 	case $reply in
 		[Yy])
@@ -99,22 +98,19 @@ Do you wish to continue? [Y(y)/N(n)]:
 	esac
 
 
-	# Installation command
-	qemu-system-x86_64 \
-		-machine q35 \
-		-enable-kvm \
-		-m "${QCOW2_RAM}" \
-		-cpu host \
-		-smp $(($(nproc)-1)) \
-		-netdev user,id=net0,hostfwd=tcp::2424-:22, \
-			bootfile=http://10.0.2.2:8080/install.conf \
-		-device virtio-net-pci,netdev=net0 \
-		-drive file="$(pwd)/${QCOW2_DISK_NAME}",format=qcow2, \
-			if=none,id=drive1,index=1 \
-		-drive file="$(pwd)/${IMAGE_NAME}",format=raw,if=ide, \
-			id=drive0,index=0 \
-		-device virtio-blk-pci,drive=drive1 \
-		-boot order=c,menu=on
+    # Installation command
+    qemu-system-x86_64 \
+            -machine q35 \
+            -enable-kvm \
+            -m "${QCOW2_RAM}" \
+            -cpu host \
+            -smp $(($(nproc)-1)) \
+            -netdev user,id=net0,hostfwd=tcp::2424-:22 \
+            -device virtio-net-pci,netdev=net0 \
+            -drive file="$(pwd)/${QCOW2_DISK_NAME}",format=qcow2,if=none,id=drive1,index=1 \
+            -drive file="$(pwd)/${IMAGE_NAME}",format=raw,if=ide,id=drive0,index=0 \
+            -device virtio-blk-pci,drive=drive1 \
+            -boot order=c,menu=on
 }
 
 
@@ -135,8 +131,8 @@ boot () {
 			-usb \
 			-netdev user,id=net0,hostfwd=tcp::$SSH_PORT-:22 \
 			-device virtio-net-pci,netdev=net0,mac='52:54:00:12:34:56' \
-			-drive file="$(pwd)/${QCOW2_DISK_NAME}",format=qcow2,if=none,id=drive0,index=0 \
-			-device virtio-blk-pci,drive=drive0 \
+			-drive file="$(pwd)/${QCOW2_DISK_NAME}",format=qcow2,if=none,id=drive1,index=0 \
+			-device virtio-blk-pci,drive=drive1 \
 			-boot order=c,menu=on \
 			-s
 	else
@@ -153,8 +149,8 @@ boot () {
 			-display none \
 			-netdev user,id=net0,hostfwd=tcp::$SSH_PORT-:22 \
 			-device virtio-net-pci,netdev=net0,mac='52:54:00:12:34:56' \
-			-drive file="$(pwd)/${QCOW2_DISK_NAME}",format=qcow2,if=none,id=drive0,index=0 \
-			-device virtio-blk-pci,drive=drive0 \
+			-drive file="$(pwd)/${QCOW2_DISK_NAME}",format=qcow2,if=none,id=drive1,index=0 \
+			-device virtio-blk-pci,drive=drive1 \
 			-boot order=c,menu=on
 	fi
 }
