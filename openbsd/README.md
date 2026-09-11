@@ -55,16 +55,26 @@ process, that you likely want to preserve.
 
 6. Install the OpenBSD box:
 ```bash
-# Serve the siteXX.tgz, install.conf, and custom_disklabel.conf files
+# 1. Serve the siteXX.tgz, install.conf, and custom_disklabel.conf files
 cd "${PROJECT_ROOT}"; python3 -m http.server 80
-# Proceed with the installation process
+# 2. Proceed with the installation process
 chmod +x openbsd_box.sh; ./openbsd_box.sh -i
-# Once we have booted into the OpenBSD installation image, type
+# 3. Once we have booted into the OpenBSD installation image, type
 # 'Automatic (A)' to follow the automatic installation process
+# 4. Next, OpenBSD will ask to retrieve files from 'http://10.0.2.2:80',
+# press Enter and wait for the installation to complete
+# 5. You will see that QEMU boots into the installation image again.
+# That is fine, you just have to quit QEMU.
+
 ```
 
-7. Wait for the installation to complete.
-8. Done! Your QEMU box is ready. Whenever you want to boot into your VM,
+8. Done! Your QEMU box is ready.
+```sh
+# Remember to copy you public user ssh key
+ssh-copy-id -i ~/.ssh/<id_rsa.pub> -p 2424 bsd@localhost
+```
+
+9. Whenever you want to boot into your VM,
 execute these commands:
 ```bash
 # Power on the VM

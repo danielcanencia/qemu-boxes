@@ -35,7 +35,7 @@ qemu-boxes/
 ## Documentation
 
 Each system directory contains its own `README.md` with specific instructions. 
-See [openbsd/README.md](openbsd/README.md) for the OpenBSD box.
+See [openbsd/README.md](openbsd/README.md) for the OpenBSD box one.
 
 
 ## Adding a new system
