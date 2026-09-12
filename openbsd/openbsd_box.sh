@@ -3,9 +3,9 @@
 # Setup, install, and boot an OpenBSD QEMU virtual machine.
 
 MIRROR="https://cdn.openbsd.org/pub/OpenBSD"
-RELEASE="7.9"
+RELEASE="snapshots"
 ARCH="amd64"
-IMAGE_NAME="miniroot79.img"
+IMAGE_NAME="miniroot80.img"
 # Performance-related
 QCOW2_DISK_CAPACITY="42G"
 QCOW2_RAM="4G"
@@ -120,7 +120,8 @@ Do you wish to continue? [Y(y)/N(n)]: "
 boot () {
 	printf "======== Booting into the VM ========\n"
 
-	if [ "$DEBUG" ]; then
+	if ! [ -z "$DEBUG" ] && [ "$DEBUG" -eq 1 ]; then
+        echo "DEBUG"
 		qemu-system-x86_64 \
 			-machine q35 \
 			-enable-kvm \
@@ -135,24 +136,28 @@ boot () {
 			-device virtio-blk-pci,drive=drive1 \
 			-boot order=c,menu=on \
 			-s
-	else
-		printf "Use 'ssh %s@localhost -p %s' to connect to the VM\n\n" "bsd" "$SSH_PORT"
-		printf "Note: use 'pkill qemu-system-x86' to kill the background process\n\n"
-		qemu-system-x86_64 \
-			-machine q35 \
-			-enable-kvm \
-			-m "${QCOW2_RAM}" \
-			-cpu host \
-			-smp $(($(nproc)-1)) \
-			-usb \
-			-daemonize \
-			-display none \
-			-netdev user,id=net0,hostfwd=tcp::$SSH_PORT-:22 \
-			-device virtio-net-pci,netdev=net0,mac='52:54:00:12:34:56' \
-			-drive file="$(pwd)/${QCOW2_DISK_NAME}",format=qcow2,if=none,id=drive1,index=0 \
-			-device virtio-blk-pci,drive=drive1 \
-			-boot order=c,menu=on
-	fi
+    else
+
+        printf "Use 'ssh %s@localhost -p %s' to connect to the VM\n\n" "bsd" "$SSH_PORT"
+        printf "Note: use 'pkill qemu-system-x86' to kill the background process\n\n"
+        qemu-system-x86_64 \
+            -machine q35 \
+            -enable-kvm \
+            -m "${QCOW2_RAM}" \
+            -cpu host \
+            -smp $(($(nproc)-1)) \
+            -usb \
+            -display none \
+            -daemonize \
+            -netdev user,id=net0,hostfwd=tcp::$SSH_PORT-:22 \
+            -device virtio-net-pci,netdev=net0,mac='52:54:00:12:34:56' \
+            -drive file="$(pwd)/${QCOW2_DISK_NAME}",format=qcow2,if=none,id=drive1,index=0 \
+            -device virtio-blk-pci,drive=drive1 \
+            -boot order=c,menu=on
+
+    fi
+
+    exit 0
 }
 
 
@@ -164,16 +169,14 @@ boot () {
 for arg in "$@"; do
 	case "$arg" in
 		-d|--debug)
+            setup
 			DEBUG=1
-			if [ $# -eq 1 ]; then
-				setup
-				boot
-			fi
+            boot
 			;;
 		-b|--boot)
 			setup
+			DEBUG=0
 			boot
-			exit 0
 			;;
 		-i|--install)
 			setup
@@ -204,5 +207,4 @@ done
 if [ $# -eq 0 ]; then
 	setup
 	boot
-	exit 0
 fi
