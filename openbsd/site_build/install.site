@@ -15,5 +15,6 @@ chown -R "${USERNAME}:wobj" /usr/ports /usr/obj /usr/src
 chmod -R g+w /usr/ports /usr/obj /usr/src
 
 # Set proper permissions for system config files
+chown root:wheel /etc/doas.conf
 chmod 600 /etc/doas.conf
 chmod 644 /etc/mk.conf
