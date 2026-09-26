@@ -1,0 +1,4 @@
+# Downloaded firmware
+*.elf
+# The idle loop written when there is no firmware to load
+.idle.bin
