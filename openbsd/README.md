@@ -13,23 +13,39 @@
 ## Project structure
 
 ```
-openbsd/                  # OpenBSD QEMU box
-├── openbsd_box.sh        # Main script (setup, install, boot)
-├── install.conf          # Autoinstall configuration
-├── custom_disklabel.conf # Custom disk partition layout
-├── site_build/           # Post-install customization scripts
-├── openbsd_box.sh        # Main script (setup, install, boot)
+openbsd/                     # OpenBSD QEMU box
+├── openbsd_box.sh           #   Main script (setup, install, boot)
+├── install.conf             #   Autoinstall configuration
+├── custom_disklabel.conf    #   Custom disk partition layout
+├── site_build/              #   Post-install customization scripts
+│   ├── install.site
+│   └── etc/
+│       └── doas.conf
+├── .gitignore               # Ignores the downloaded image and the disks
 └── README.md
 ```
 
+Running the box also leaves `miniroot80.img`, `SHA256`, `openbsd.qcow2` and
+`siteXX.tgz` in this directory; they are all ignored by `.gitignore`.
+
+`openbsd_box.sh` sources the output helpers shared by the whole repository,
+which live in [../lib/output.sh](../lib/output.sh) — keep that relative path
+in mind when copying the script somewhere else. The presentation details
+(rule width, characters, wording of the messages) are tweakable at the top
+of that file, and `./openbsd_box.sh -h` lists every setting of this box
+along with its current value.
+
 ## Quickstart
 1. Modify the `openbsd_box.sh` script according to your needs. Specifically, you will
-want to modify the following local variables:
+want to modify the following local variables. `./openbsd_box.sh -h` prints the
+same list, along with their current values:
     - `$RELEASE`, `$ARCH`, and `$IMAGE_NAME` = self-explanatory.
     - `$QCOW2_DISK_NAME`: defines the name of the resulting qcow2 image.
     - `$QCOW2_DISK_CAPACITY`: defines the size of the resulting qcow2 image.
     - `$SSH_PORT`: defines the local host port that will be used to connect via SSH to
       the guest host after boot up.
+    - `$SSH_USER`: the user set up by `install.conf`, to connect as after boot up.
+    - `$QEMU_BIN`: the QEMU executable to run.
 
 2. Configure OpenBSD (automatic) installation steps: `$EDITOR ./install.conf`.
     > See [autoinstall(8)](https://man.openbsd.org/autoinstall.8)

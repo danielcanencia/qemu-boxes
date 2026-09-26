@@ -17,33 +17,92 @@ Automated creation and management of custom QEMU virtual machine boxes.
 | System | Status |
 |--------|--------|
 | [OpenBSD](openbsd/) | Supported |
+| [Raspberry Pi OS Lite (aarch64)](embedded/raspberry/) | Supported |
+| [Cortex-M33 / TrustZone (AN505)](embedded/trustzone/) | Supported |
 
 ## Requirements
 
 - Linux with KVM support.
 - [QEMU](https://www.qemu.org/) (`qemu-system-x86_64`, `qemu-img`).
+  The Raspberry Pi box needs `qemu-system-aarch64` and the TrustZone one
+  `qemu-system-arm`; both run under TCG emulation, without KVM.
 
 ## Project structure
 
 ```
 qemu-boxes/
-├── openbsd/                  # OpenBSD QEMU box
-├── .../                      # Other QEMU boxes
+├── lib/                          # Shared helpers
+│   └── output.sh                 #   Output and prerequisite helpers
+├── openbsd/                      # OpenBSD QEMU box
+│   ├── openbsd_box.sh            #   Main script (setup, install, boot)
+│   ├── install.conf              #   Autoinstall configuration
+│   ├── custom_disklabel.conf     #   Custom disk partition layout
+│   ├── site_build/               #   Post-install customization scripts
+│   │   ├── install.site
+│   │   └── etc/
+│   │       └── doas.conf
+│   ├── .gitignore
+│   └── README.md
+├── embedded/                     # Embedded QEMU boxes
+│   ├── raspberry/                # Raspberry Pi OS Lite box
+│   │   ├── raspberry_pi_box.sh   #   Main script (setup, boot)
+│   │   ├── .gitignore
+│   │   └── README.md
+│   ├── trustzone/                # Cortex-M33 / TrustZone box
+│   │   ├── trustzone_box.sh      #   Main script (setup, boot)
+│   │   ├── .gitignore
+│   │   └── README.md
+│   └── README.md                 # Index of the boxes above
+├── .shellcheckrc                 # Shellcheck configuration
+├── .github/                      # Mirror and pull request automation
+│   └── workflows/
+│       ├── forward-pr.yml
+│       └── mirror.yml
+├── .../                          # Other QEMU boxes
 └── README.md
 ```
 
+Each box has its own directory with a `README.md` of its own, and every box
+directory carries a `.gitignore` for the files its `setup` downloads or
+creates.
+
+Every box sources the same helpers, so the whole repository speaks with one
+voice. `lib/output.sh` is not executed, only sourced through the location of
+the box script — the number of `../` depends on how deep the box sits:
+
+```sh
+# from openbsd/, one level down
+# shellcheck source=lib/output.sh
+. "$(dirname "$0")/../lib/output.sh"
+
+# from embedded/raspberry/, two levels down
+. "$(dirname "$0")/../../lib/output.sh"
+```
+
+It holds the presentation details (rule width, characters, wording of the
+messages, tweak them at the top of the file) along with the few helpers the
+boxes share: the output primitives, `fail`/`warn`, `sha256_of`, and `fetch`.
+
 ## Documentation
 
-Each system directory contains its own `README.md` with specific instructions. 
-See [openbsd/README.md](openbsd/README.md) for the OpenBSD box one.
+Each box directory contains its own `README.md` with specific instructions.
+See [openbsd/README.md](openbsd/README.md),
+[embedded/raspberry/README.md](embedded/raspberry/README.md), and
+[embedded/trustzone/README.md](embedded/trustzone/README.md).
 
 
 ## Adding a new system
 
-1. Create a new directory at the project root (e.g., `freebsd/`, `netbsd/`).
+1. Create a new directory for the box, either at the project root (e.g.,
+   `freebsd/`, `netbsd/`) or grouped with related ones (as `embedded/` does).
 2. Add a QEMU wrapper script and any necessary configuration files.
-3. Add a `README.md` with system-specific instructions.
-4. Update the supported systems table above.
+3. Source `lib/output.sh` from the new box, as the existing ones do, so that
+   it looks and reads like the rest. The path is relative to the script, so
+   count the `../` needed to get back to the project root.
+4. Add a `README.md` with system-specific instructions, and a `.gitignore`
+   for whatever the box downloads or creates.
+5. Update the supported systems table above, and the project structure above
+   if the box was added to a group.
 
 ## Coding standards
 

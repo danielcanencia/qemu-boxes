@@ -4,3 +4,9 @@
 # intentional in usage messages that print variable names literally
 # (e.g. `$QCOW2_DISK_CAPACITY`) for the user to read.
 disable=SC2016
+#
+# SC1091 (info): "Not following: <file> was not specified as input." The
+# output helpers in embedded/output.sh are sourced by the box scripts, so
+# they are linted on their own; use 'shellcheck -x' to also check what they
+# pull in.
+disable=SC1091
