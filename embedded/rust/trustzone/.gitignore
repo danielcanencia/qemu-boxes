@@ -1,0 +1,8 @@
+# The firmware built by the box, and the image it downloads
+*.elf
+# The target directory cargo builds into
+target/
+# The lock file, regenerated on every build
+Cargo.lock
+# The idle loop written when there is no firmware to load
+.idle.bin

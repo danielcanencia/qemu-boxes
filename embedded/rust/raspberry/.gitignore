@@ -1,0 +1,26 @@
+# Downloaded disk images and their archives
+*.img
+*.img.xz
+# Published checksums
+SHA256
+# Downloaded device tree blobs
+*.dtb
+# The kernel built from source, and its tarball
+linux-*/
+linux-*.tar.xz
+# Built kernel modules
+*.ko
+*.o
+*.mod.c
+*.mod.o
+Module.symvers
+modules.order
+# Temporary files holding the guest credentials and the partition copy
+.userconf*
+.rootfs.img
+.shadow
+.shadow.new
+# The DHCP server's own state, while the box is running
+.dnsmasq.leases
+.dnsmasq.pid
+.dnsmasq.log

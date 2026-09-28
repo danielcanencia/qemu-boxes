@@ -1,4 +1,6 @@
 # Downloaded firmware
 *.elf
+# The object files, one per value of $HANDOVER
+*.o
 # The idle loop written when there is no firmware to load
 .idle.bin

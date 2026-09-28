@@ -1,0 +1,23 @@
+[package]
+name = "an505_trustzone_demo"
+version = "0.1.0"
+edition = "2021"
+
+# This image is written by hand rather than on top of cortex-m-rt, because
+# the vector table and the entry point of a TrustZone image have to be placed
+# exactly where the core looks for them, and the world switch needs assembly
+# that no crate provides.
+
+# Whether the Secure world hands the core over to the Non-secure one. Off by
+# default, so that a normal build is a normal boot: the Secure world starts,
+# does its own work, and stays there. The box turns this on for --handover.
+#
+# It is a feature rather than a run-time option because the branch that
+# leaves the Secure state is compiled in or it is not, so the image has to be
+# rebuilt to change it.
+[features]
+default = []
+handover = []
+
+[profile.release]
+lto = true

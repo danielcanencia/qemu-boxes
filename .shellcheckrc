@@ -6,7 +6,13 @@
 disable=SC2016
 #
 # SC1091 (info): "Not following: <file> was not specified as input." The
-# output helpers in embedded/output.sh are sourced by the box scripts, so
-# they are linted on their own; use 'shellcheck -x' to also check what they
-# pull in.
+# helpers in lib/output.sh are sourced by the box scripts, so they are linted
+# on their own; use 'shellcheck -x' to also check what they pull in.
 disable=SC1091
+#
+# SC2034 (warning): "appears unused." The Raspberry Pi boxes define the
+# variables that set_password() in lib/output.sh works with ($GUEST_USER,
+# $ROOTFS_OFFSET, $PASSWORD_HASH, and so on), and call that function, so they
+# are used — but only across the sourced file, which shellcheck cannot see
+# without '-x'.
+disable=SC2034

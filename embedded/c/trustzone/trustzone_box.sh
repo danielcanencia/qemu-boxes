@@ -19,8 +19,8 @@
 # prebuilt binaries.
 
 # Output helpers, shared with every box in this repository
-# shellcheck source=lib/output.sh
-. "$(dirname "$0")/../../lib/output.sh"
+# shellcheck source=output.sh
+. "$(dirname "$0")/output.sh"
 
 # Where the firmware is stored
 WORK_DIR="."
@@ -45,6 +45,18 @@ LOAD_ADDR="0x10000000"
 # the loop itself, as 'b .' in Thumb. Written out as octal escapes, since
 # printf(1) is the portable way of putting such bytes into a file.
 IDLE_FIRMWARE="\000\000\000\020\011\000\000\020\376\347\376\347"
+# Cross compiler, for building the firmware
+CROSS_COMPILE="arm-none-eabi-"
+# Whether the firmware hands the core over from the Secure world to the
+# Non-secure one: "off" for a normal boot, "on" for a dual-world one.
+#
+# Off by default, so that building and booting this box does what any other
+# box does. The handover is the TrustZone part, and it is what you turn on
+# when that is what you are here for: the Secure world starts either way,
+# and only with this set does it branch into the Non-secure world with a
+# BLXNS. It is a build setting rather than a runtime one, so the firmware
+# has to be rebuilt to change it.
+HANDOVER="off"
 
 
 #
@@ -65,13 +77,15 @@ setup () {
 		step "reusing the ${ELF_NAME} firmware found in ${work_dir}"
 		result "${OK_CHAR}" "no download needed"
 	elif [ -z "${ELF_URL}" ]; then
-		warn "no firmware to load, so the machine will boot empty" \
+		warn "no firmware to load, so the machine will boot a loop that spins" \
 			"That is not an error: QEMU creates the ${MACHINE}" \
 			"board on its own, and this box runs without anything" \
 			"being downloaded. Firmware is what makes the Secure" \
 			"and the Non-secure world do something after reset," \
 			"though. To provide one:" \
 			"" \
+			"    - build the image in this directory with" \
+			"      './trustzone_box.sh build', or" \
 			"    - copy an ELF file of your own, named" \
 			"      ${ELF_NAME}, into ${work_dir}, or" \
 			"    - set \$ELF_URL to a mirror serving one" \
@@ -103,7 +117,40 @@ setup () {
 	fi
 
 	blank
-	paragraph "The box is ready. Boot it with './trustzone_box.sh'."
+	paragraph "The box is ready. Build the firmware with './trustzone_box.sh" \
+		"build', or boot it as it is with './trustzone_box.sh'."
+}
+
+
+#
+# ==== Building the firmware ====
+#
+build () {
+	section "Cortex-M33 TrustZone box" "build · compile the firmware"
+
+	# The handover is compiled in or left out, so the Makefile is told which
+	# one this build is for
+	case "${HANDOVER}" in
+		on) _handover=1 ;;
+		off) _handover=0 ;;
+		*)
+			fail "\$HANDOVER is '${HANDOVER}', which is neither on nor off" \
+				"Set it to \"off\" for a normal boot, or \"on\" for one" \
+				"that hands the core over to the Non-secure world."
+			;;
+	esac
+	if [ "${_handover}" -eq 1 ]; then
+		step "compiling the firmware with ${CROSS_COMPILE}gcc, with the handover"
+	else
+		step "compiling the firmware with ${CROSS_COMPILE}gcc"
+	fi
+	if ! make -C "$(dirname "$0")" CROSS_COMPILE="${CROSS_COMPILE}" \
+		HANDOVER="${_handover}" >/dev/null; then
+		fail "the firmware could not be built" \
+			"Run 'make CROSS_COMPILE=${CROSS_COMPILE} HANDOVER=${_handover}'" \
+			"by hand to see the compiler output."
+	fi
+	result "${OK_CHAR}" "${ELF_NAME} is ready"
 }
 
 
@@ -137,13 +184,45 @@ boot () {
 		note "attach with: 'gdb', 'target remote :1234', then 'continue'"
 		set -- "$@" -S -gdb tcp::1234
 	fi
-	note "quit QEMU with Ctrl+A, then X"
 
+	# There is no operating system here, so nothing is going to greet you on
+	# the terminal and there is nothing to log in to. Say so before QEMU
+	# takes the screen over, rather than leaving it looking like a guest
+	# that has hung.
+	blank
+	paragraph "There is no operating system and no login. The firmware is bare" \
+		"metal, so it prints nothing and there is no prompt to type at."
+	paragraph "What you can type here is QEMU's own monitor, not the guest." \
+		"'info registers' and 'x/8i \$pc' are the useful ones; 'help'" \
+		"lists the rest. To run the guest yourself, use '-d' and drive" \
+		"it through gdb instead."
+	case "${HANDOVER}" in
+		on)
+			note "this build hands the core over to the Non-secure world"
+			;;
+		*)
+			note "this build stays in the Secure world"
+			note "rebuild with --handover for a dual-world image"
+			;;
+	esac
+
+	note "leave QEMU with 'quit' at the monitor prompt"
+
+	# The monitor is put on the terminal with -monitor stdio rather than
+	# with the usual -serial mon:stdio. On this board the second form does
+	# not work: the machine already claims stdio for its own UART, so the
+	# mux never gets it, and what reaches the terminal is a dead line that
+	# answers nothing. -monitor stdio is a separate request and is
+	# honoured, so the monitor below really is typeable. The price is that
+	# the guest's UART is thrown away instead of being muxed with it,
+	# which costs nothing while the firmware prints nothing anyway, and
+	# that Ctrl+A, then X no longer quits, hence the instruction above.
 	"${QEMU_BIN}" \
 		-machine "${MACHINE}" \
 		-cpu "${CPU}" \
-		-nographic \
-		-serial mon:stdio \
+		-display none \
+		-serial null \
+		-monitor stdio \
 		"$@"
 
 	rm -f "${WORK_DIR}/.idle.bin"
@@ -156,28 +235,41 @@ boot () {
 usage () {
 	section "Cortex-M33 TrustZone box" "boot a Cortex-M33 with TrustZone enabled"
 
-	printf '  %s\n' "Usage: ./trustzone_box.sh [-s|--setup] [-b|--boot]"
-	printf '  %s\n' "                           [-d|--debug] [-h|--help]"
+	printf '  %s\n' "Usage: ./trustzone_box.sh [--handover] [-s|--setup]"
+	printf '  %s\n' "                           [-b|--boot] [-d|--debug]"
+	printf '  %s\n' "                           [-h|--help] [build]"
 
 	printf '\n'
 	printf '  %s\n' "Options:"
-	printf '    %-14s %s\n' "-s, --setup" "download the firmware and stop"
-	printf '    %-14s %s\n' "-b, --boot" "download the firmware and boot [default]"
+	printf '    %-14s %s\n' "--handover" "hand over to the Non-secure world"
+	printf '    %-14s %s\n' "build" "compile the firmware and stop"
+	printf '    %-14s %s\n' "-s, --setup" "download the firmware, if any, and stop"
+	printf '    %-14s %s\n' "-b, --boot" "download, build, and boot [default]"
 	printf '    %-14s %s\n' "-d, --debug" "boot with the cpu halted, for gdb"
 	printf '    %-14s %s\n' "-h, --help" "print this help message"
-	note "only the first option is taken into account"
+	note "--handover comes first: only the first option is taken into account"
 
 	printf '\n'
 	printf '  %s\n' "Settings:"
 	setting "\$MACHINE" "emulated board" "${MACHINE}"
 	setting "\$CPU" "emulated cpu" "${CPU}"
 	setting "\$WORK_DIR" "where files are stored" "${WORK_DIR}"
-	setting "\$ELF_NAME" "firmware to load, optional" "${ELF_NAME}"
-	setting "\$ELF_URL" "where to get it from" "${ELF_URL:-not set}"
+	setting "\$ELF_NAME" "firmware to build and load" "${ELF_NAME}"
+	setting "\$LOAD_ADDR" "where it is loaded" "${LOAD_ADDR}"
+	setting "\$CROSS_COMPILE" "cross compiler prefix" "${CROSS_COMPILE}"
+	setting "\$HANDOVER" "world handover" "${HANDOVER}"
 
 	printf '\n'
-	paragraph "QEMU builds the machine on its own, so the firmware above is" \
-		"optional: without it the box boots an empty board that sits idle."
+	paragraph "The firmware is a dual-world TrustZone image, built with" \
+		"${CROSS_COMPILE}gcc. Edit main.c and world_switch.s, then run" \
+		"'./trustzone_box.sh build' to recompile it."
+	paragraph "A normal boot stays in the Secure world. The handover is what" \
+		"branches into the Non-secure one, and it is off unless you ask" \
+		"for it with --handover, since it is compiled in rather than" \
+		"chosen at run time."
+	paragraph "There is no operating system and no login, so the firmware" \
+		"prints nothing and there is no prompt. What the terminal takes" \
+		"is QEMU's monitor; use -d and gdb to run the guest yourself."
 }
 
 
@@ -187,20 +279,41 @@ usage () {
 DEBUG=0
 
 # Argument matching
-for arg in "$@"; do
+#
+# --handover is a modifier rather than an action: it sets $HANDOVER and hands
+# the rest of the command line on, so that it has to come before the option
+# it modifies, the same way -n does in the other boxes. Everything else ends
+# the script, which is what makes "only the first option is taken into
+# account" true: iterating over "$@" without that would go on to the second
+# option and start the whole chain over again.
+while [ "$#" -gt 0 ]; do
+	arg="$1"
 	case "$arg" in
+		--handover)
+			HANDOVER="on"
+			shift
+			;;
 		-d|--debug)
 			setup
+			build
 			DEBUG=1
 			boot
+			exit 0
 			;;
 		-b|--boot)
 			setup
+			build
 			DEBUG=0
 			boot
+			exit 0
 			;;
 		-s|--setup)
 			setup
+			exit 0
+			;;
+		build)
+			build
+			exit 0
 			;;
 		--help|-h|*)
 			case "$arg" in
@@ -217,5 +330,6 @@ done
 # [-b | --boot] is the default argument
 if [ $# -eq 0 ]; then
 	setup
+	build
 	boot
 fi
