@@ -20,8 +20,8 @@ SSH_USER="bsd"
 DEBUG=0
 
 # Output helpers, shared with every box in this repository
-# shellcheck source=lib/output.sh
-. "$(dirname "$0")/../lib/output.sh"
+# shellcheck source=output.sh
+. "$(dirname "$0")/output.sh"
 
 
 #

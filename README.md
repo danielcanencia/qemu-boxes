@@ -17,15 +17,21 @@ Automated creation and management of custom QEMU virtual machine boxes.
 | System | Status |
 |--------|--------|
 | [OpenBSD](openbsd/) | Supported |
-| [Raspberry Pi OS Lite (aarch64)](embedded/raspberry/) | Supported |
-| [Cortex-M33 / TrustZone (AN505)](embedded/trustzone/) | Supported |
+| [Raspberry Pi OS Lite (aarch64, C)](embedded/c/raspberry/) | Supported |
+| [Cortex-M33 / TrustZone (AN505, C)](embedded/c/trustzone/) | Supported |
+| [Raspberry Pi OS Lite (aarch64, Rust)](embedded/rust/raspberry/) | Supported |
+| [Cortex-M33 / TrustZone (AN505, Rust)](embedded/rust/trustzone/) | Supported |
 
 ## Requirements
 
 - Linux with KVM support.
 - [QEMU](https://www.qemu.org/) (`qemu-system-x86_64`, `qemu-img`).
-  The Raspberry Pi box needs `qemu-system-aarch64` and the TrustZone one
-  `qemu-system-arm`; both run under TCG emulation, without KVM.
+  The Raspberry Pi boxes need `qemu-system-aarch64` and the TrustZone ones
+  `qemu-system-arm`; all the embedded guests run under TCG emulation,
+  without KVM.
+- The embedded boxes additionally need a cross toolchain and a build tool:
+  `aarch64-linux-gnu-gcc` and `arm-none-eabi-gcc` for the C boxes, and
+  `rustup` for the Rust ones. See each box's `README.md`.
 
 ## Project structure
 
@@ -44,15 +50,13 @@ qemu-boxes/
 │   ├── .gitignore
 │   └── README.md
 ├── embedded/                     # Embedded QEMU boxes
-│   ├── raspberry/                # Raspberry Pi OS Lite box
-│   │   ├── raspberry_pi_box.sh   #   Main script (setup, boot)
-│   │   ├── .gitignore
-│   │   └── README.md
-│   ├── trustzone/                # Cortex-M33 / TrustZone box
-│   │   ├── trustzone_box.sh      #   Main script (setup, boot)
-│   │   ├── .gitignore
-│   │   └── README.md
-│   └── README.md                 # Index of the boxes above
+│   ├── c/                        #   Boxes set up for C development
+│   │   ├── raspberry/            #     Raspberry Pi OS Lite, kernel module
+│   │   └── trustzone/           #     Cortex-M33 / TrustZone, --handover for both worlds
+│   ├── rust/                     #   Boxes set up for Rust development
+│   │   ├── raspberry/            #     Raspberry Pi OS Lite, Rust kernel module
+│   │   └── trustzone/           #     Cortex-M33 / TrustZone, --handover for both worlds
+│   └── README.md                 #   Index of the boxes above
 ├── .shellcheckrc                 # Shellcheck configuration
 ├── .github/                      # Mirror and pull request automation
 │   └── workflows/
@@ -67,28 +71,28 @@ directory carries a `.gitignore` for the files its `setup` downloads or
 creates.
 
 Every box sources the same helpers, so the whole repository speaks with one
-voice. `lib/output.sh` is not executed, only sourced through the location of
-the box script — the number of `../` depends on how deep the box sits:
+voice. `lib/output.sh` is not executed, only sourced through the box's own
+directory, which carries a symlink to it. That way the path in the script is
+the same in every box, however deep the box sits:
 
 ```sh
-# from openbsd/, one level down
-# shellcheck source=lib/output.sh
-. "$(dirname "$0")/../lib/output.sh"
-
-# from embedded/raspberry/, two levels down
-. "$(dirname "$0")/../../lib/output.sh"
+# every box sources it this way, output.sh being a symlink to
+# ../lib/output.sh, ../../lib/output.sh, ... as the depth requires
+# shellcheck source=output.sh
+. "$(dirname "$0")/output.sh"
 ```
 
 It holds the presentation details (rule width, characters, wording of the
 messages, tweak them at the top of the file) along with the few helpers the
-boxes share: the output primitives, `fail`/`warn`, `sha256_of`, and `fetch`.
+boxes share: the output primitives, `fail`/`warn`, `sha256_of`, `fetch`, and
+`set_password`.
 
 ## Documentation
 
 Each box directory contains its own `README.md` with specific instructions.
-See [openbsd/README.md](openbsd/README.md),
-[embedded/raspberry/README.md](embedded/raspberry/README.md), and
-[embedded/trustzone/README.md](embedded/trustzone/README.md).
+See [openbsd/README.md](openbsd/README.md) and
+[embedded/README.md](embedded/README.md), which indexes the four embedded
+boxes.
 
 
 ## Adding a new system
@@ -96,9 +100,9 @@ See [openbsd/README.md](openbsd/README.md),
 1. Create a new directory for the box, either at the project root (e.g.,
    `freebsd/`, `netbsd/`) or grouped with related ones (as `embedded/` does).
 2. Add a QEMU wrapper script and any necessary configuration files.
-3. Source `lib/output.sh` from the new box, as the existing ones do, so that
-   it looks and reads like the rest. The path is relative to the script, so
-   count the `../` needed to get back to the project root.
+3. Symlink `lib/output.sh` into the box directory, counting the `../` needed
+   to get back to the project root, and source it through that symlink as the
+   existing boxes do, so that it looks and reads like the rest.
 4. Add a `README.md` with system-specific instructions, and a `.gitignore`
    for whatever the box downloads or creates.
 5. Update the supported systems table above, and the project structure above
