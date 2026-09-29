@@ -10,6 +10,21 @@ IMAGE_NAME="miniroot80.img"
 # Performance-related
 QCOW2_DISK_CAPACITY="42G"
 QCOW2_RAM="4G"
+# Acceleration: "auto" uses KVM when /dev/kvm can be opened, and refuses
+# to run when it cannot. "kvm" and "tcg" force one or the other; the vm
+# runs under software emulation only when that is asked for explicitly.
+# KVM_CPU only exists under KVM, and is impossible under TCG.
+ACCEL="auto"
+KVM_CPU="host"
+TCG_CPU="max"
+# QEMU rejects -smp 0, so the guest CPU count is clamped at 1 instead of
+# being a bare $(nproc)-1 that fails on a single-core host.
+if command -v nproc >/dev/null 2>&1; then
+	QEMU_SMP=$(($(nproc) - 1))
+	[ "${QEMU_SMP}" -ge 1 ] || QEMU_SMP=1
+else
+	QEMU_SMP=1
+fi
 # Miscellaneous
 QEMU_BIN="qemu-system-x86_64"
 QCOW2_DISK_NAME="openbsd.qcow2"
@@ -86,6 +101,61 @@ setup () {
 
 
 #
+# ==== Acceleration ====
+#
+
+# Picks the accelerator and the CPU model that goes with it, by setting
+# QEMU_ACCEL and QEMU_CPU. QEMU refuses to start with KVM requested when
+# /dev/kvm cannot be opened, and this box only runs accelerated: "auto"
+# stops with a message on a host without KVM rather than silently running
+# an unaccelerated vm. "tcg" is the explicit way to ask for software
+# emulation.
+accel () {
+	QEMU_ACCEL="${ACCEL}"
+	case "${ACCEL}" in
+		auto)
+			if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then
+				QEMU_ACCEL=kvm
+			else
+				fail "no /dev/kvm on this host, and this box only runs" \
+					"with hardware acceleration" \
+					"" \
+					"Load the kvm module for your cpu and check that" \
+					"/dev/kvm appears:" \
+					"    sudo modprobe kvm_amd   # amd cpus; kvm-amd since linux 6.8" \
+					"    sudo modprobe kvm_intel  # intel cpus; kvm-intel since 6.8" \
+					"If modprobe says the module is missing, the running" \
+					"kernel has no modules of its own: install the kernel" \
+					"package that matches '$(uname -r)' and reboot (on" \
+					"Arch, the linux or linux-lts package)." \
+					"" \
+					"If modprobe reports 'Operation not supported', the" \
+					"firmware has virtualization off: enable SVM mode /" \
+					"AMD-V in the UEFI or BIOS and reboot, then retry." \
+					"" \
+					"To run under software emulation anyway, set" \
+					"\$ACCEL=\"tcg\" in this script and retry."
+			fi
+			;;
+		kvm|tcg) ;;
+		*)
+			fail "\$ACCEL is '${ACCEL}', which is neither auto, kvm, nor tcg" \
+				"Set it to \"auto\", or force the choice with" \
+				"\"kvm\" or \"tcg\"."
+			;;
+	esac
+
+	# -cpu host names a CPU that only exists in KVM; under TCG the widest
+	# feature set qemu can emulate is asked for instead
+	if [ "${QEMU_ACCEL}" = "kvm" ]; then
+		QEMU_CPU="${KVM_CPU}"
+	else
+		QEMU_CPU="${TCG_CPU}"
+	fi
+}
+
+
+#
 # ==== Installation ====
 #
 install () {
@@ -126,14 +196,15 @@ install () {
 
 	# Installation command
 	step "starting the installation vm"
+	accel
 	note "select '(A)utoinstall' when prompted, then press Enter at the"
 	note "'URL of the installation files' question (http://10.0.2.2:80)"
 	"${QEMU_BIN}" \
 		-machine q35 \
-		-enable-kvm \
+		-accel "${QEMU_ACCEL}" \
 		-m "${QCOW2_RAM}" \
-		-cpu host \
-		-smp $(($(nproc)-1)) \
+		-cpu "${QEMU_CPU}" \
+		-smp "${QEMU_SMP}" \
 		-netdev user,id=net0,hostfwd=tcp::${SSH_PORT}-:22 \
 		-device virtio-net-pci,netdev=net0 \
 		-drive file="$(pwd)/${QCOW2_DISK_NAME}",format=qcow2,if=none,id=drive1,index=1 \
@@ -152,12 +223,13 @@ boot () {
 	if [ "${DEBUG}" -eq 1 ]; then
 		section "Debug mode" "gdb is expected on 127.0.0.1:1234"
 		note "attach with: 'gdb', 'target remote :1234', then 'continue'"
+		accel
 		"${QEMU_BIN}" \
 			-machine q35 \
-			-enable-kvm \
+			-accel "${QEMU_ACCEL}" \
 			-m "${QCOW2_RAM}" \
-			-cpu host \
-			-smp $(($(nproc)-1)) \
+			-cpu "${QEMU_CPU}" \
+			-smp "${QEMU_SMP}" \
 			-nographic \
 			-usb \
 			-netdev user,id=net0,hostfwd=tcp::${SSH_PORT}-:22 \
@@ -174,12 +246,13 @@ boot () {
 		blank
 		paragraph "Shut it down with:"
 		note "pkill ${QEMU_BIN}"
+		accel
 		"${QEMU_BIN}" \
 			-machine q35 \
-			-enable-kvm \
+			-accel "${QEMU_ACCEL}" \
 			-m "${QCOW2_RAM}" \
-			-cpu host \
-			-smp $(($(nproc)-1)) \
+			-cpu "${QEMU_CPU}" \
+			-smp "${QEMU_SMP}" \
 			-usb \
 			-display none \
 			-daemonize \
@@ -221,6 +294,7 @@ usage () {
 	setting "\$QCOW2_DISK_NAME" "resulting disk" "${QCOW2_DISK_NAME}"
 	setting "\$QCOW2_DISK_CAPACITY" "disk size" "${QCOW2_DISK_CAPACITY}"
 	setting "\$QCOW2_RAM" "guest memory" "${QCOW2_RAM}"
+	setting "\$ACCEL" "auto, kvm, or tcg" "${ACCEL}"
 	setting "\$SSH_PORT" "host ssh port" "${SSH_PORT}"
 	setting "\$SSH_USER" "user created at install" "${SSH_USER}"
 
@@ -237,12 +311,10 @@ usage () {
 for arg in "$@"; do
 	case "$arg" in
 		-d|--debug)
-			setup
 			DEBUG=1
 			boot
 			;;
 		-b|--boot)
-			setup
 			DEBUG=0
 			boot
 			;;
@@ -264,6 +336,5 @@ done
 
 # [-b | --boot] is the default argument
 if [ $# -eq 0 ]; then
-	setup
 	boot
 fi

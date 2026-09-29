@@ -46,6 +46,10 @@ same list, along with their current values:
       the guest host after boot up.
     - `$SSH_USER`: the user set up by `install.conf`, to connect as after boot up.
     - `$QEMU_BIN`: the QEMU executable to run.
+    - `$ACCEL`: `auto` (default) uses KVM when `/dev/kvm` can be opened and
+      stops with a message when it cannot. Set it to `tcg` to run under
+      software emulation (much slower), or to `kvm` to force the hardware
+      accelerator.
 
 2. Configure OpenBSD (automatic) installation steps: `$EDITOR ./install.conf`.
     > See [autoinstall(8)](https://man.openbsd.org/autoinstall.8)
